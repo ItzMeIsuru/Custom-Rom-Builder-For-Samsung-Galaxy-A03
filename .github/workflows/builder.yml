@@ -35,7 +35,7 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt update
-        sudo apt install -y zip xz-utils unzip p7zip-full wget
+        sudo apt install -y zip xz-utils unzip p7zip-full wget simg2img
         
     - name: Installing Tools
       run: |
@@ -119,6 +119,28 @@ jobs:
     - name: Packing
       run: |
         cd lpbinary/binary
+        
+        # Function to check and convert raw images to sparse images
+        convert_to_sparse() {
+          local img="$1"
+          if [ -f "$img" ]; then
+            # Read first 4 bytes to check for sparse image magic header (3a ff 26 ed)
+            magic=$(od -v -N 4 -t x1 "$img" | head -n 1 | awk '{print $2$3$4$5}')
+            if [ "$magic" != "3aff26ed" ]; then
+              echo "$img is not a sparse image (magic: $magic). Converting..."
+              img2simg "$img" "${img}.sparse"
+              mv "${img}.sparse" "$img"
+            else
+              echo "$img is already a sparse image."
+            fi
+          fi
+        }
+        
+        convert_to_sparse system.img
+        convert_to_sparse vendor.img
+        convert_to_sparse product.img
+        convert_to_sparse system_ext.img
+        
         args=(
           --metadata-size 65536
           --super-name super
