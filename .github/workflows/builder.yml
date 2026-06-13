@@ -161,12 +161,28 @@ jobs:
           fi
         }
         
+        total_size=0
+        for img in system.img vendor.img product.img system_ext.img; do
+          if [ -f "$img" ]; then
+            img_size=$(get_size "$img")
+            total_size=$((total_size + img_size))
+          fi
+        done
+        
+        # Add 50MB padding for liblp metadata and round up to 4096 block size
+        super_size=$((total_size + 52428800))
+        super_size=$(( (super_size + 4095) / 4096 * 4096 ))
+        group_size=$total_size
+        
+        echo "Calculated dynamic super_size: $super_size"
+        echo "Calculated dynamic group_size: $group_size"
+        
         args=(
           --metadata-size 65536
           --super-name super
           --metadata-slots 2
-          --device super:6763315200
-          --group main:6761218048
+          --device super:$super_size
+          --group main:$group_size
           --partition "system:readonly:$(get_size system.img):main" --image system=system.img
           --partition "vendor:readonly:$(get_size vendor.img):main" --image vendor=vendor.img
         )
