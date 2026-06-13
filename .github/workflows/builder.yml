@@ -48,6 +48,7 @@ jobs:
         wget ${{ github.event.inputs.GSI }}
         mkdir sys
         gsi_file=""
+        shopt -s nullglob
         for ext in xz gz img; do
           for candidate in *."$ext"; do
             if [ -f "$candidate" ]; then
@@ -56,15 +57,17 @@ jobs:
             fi
           done
         done
+        shopt -u nullglob
         if [ -z "$gsi_file" ]; then
           echo "No .xz, .gz, or .img GSI file was downloaded."
           exit 1
         fi
+        gsi_name=$(basename "$gsi_file")
         mv "$gsi_file" sys
         cd sys
-        case "$gsi_file" in
-          *.xz) unxz "$gsi_file" ;;
-          *.gz) gunzip "$gsi_file" ;;
+        case "$gsi_name" in
+          *.xz) unxz "$gsi_name" ;;
+          *.gz) gunzip "$gsi_name" ;;
           *.img) ;;
         esac
         mv *.img ../system.img
