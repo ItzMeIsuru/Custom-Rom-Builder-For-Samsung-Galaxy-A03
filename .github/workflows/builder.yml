@@ -91,9 +91,16 @@ jobs:
         
         # Check if this is a Dropbox link
         if [[ "$vendor_url" == *"dropbox.com"* ]]; then
-          # Force direct download from Dropbox by appending ?dl=1
-          vendor_url="${vendor_url%\?*}?dl=1"
-          echo "Detected Dropbox link, appending ?dl=1 for direct download"
+          # Force direct download from Dropbox (preserve rlkey for modern /scl/ links)
+          vendor_url="${vendor_url//dl=0/dl=1}"
+          if [[ "$vendor_url" != *"dl=1"* ]]; then
+            if [[ "$vendor_url" == *"?"* ]]; then
+              vendor_url="${vendor_url}&dl=1"
+            else
+              vendor_url="${vendor_url}?dl=1"
+            fi
+          fi
+          echo "Detected Dropbox link, modified for direct download: $vendor_url"
           wget --tries=3 -O vendor.img "$vendor_url"
         else
           # For non-Dropbox links, validate they end with /vendor.img
