@@ -45,7 +45,7 @@ jobs:
     - name: Downloading Your GSI And Extracting
       run: |
         cd lpbinary/binary
-        wget --tries=3 "${{ github.event.inputs.GSI }}"
+        wget -O system.img "${{ github.event.inputs.GSI }}"
         mkdir sys
         gsi_file=""
         shopt -s nullglob
