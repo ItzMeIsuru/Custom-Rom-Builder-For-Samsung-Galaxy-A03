@@ -185,9 +185,12 @@ jobs:
         lz4 -B6 --content-size super.img super.img.lz4
         echo "Creating ustar archive..."
         tar -H ustar -c super.img.lz4 > super.tar
+        echo "Adding MD5 checksum for Odin..."
+        md5sum -t super.tar >> super.tar
+        mv super.tar super.tar.md5
         echo "Compressing to 7z..."
-        7z a -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on "${{ github.event.inputs.NAME }}" super.tar
-        rm -rf super.tar
+        7z a -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on "${{ github.event.inputs.NAME }}" super.tar.md5
+        rm -rf super.tar.md5
     - name: Upload to Release
       uses: softprops/action-gh-release@v1
       with:
