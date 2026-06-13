@@ -135,10 +135,14 @@ jobs:
             magic=$(od -v -N 4 -t x1 "$img" | head -n 1 | awk '{print $2$3$4$5}')
             if [ "$magic" != "3aff26ed" ]; then
               echo "$img is not a sparse image (magic: $magic). Converting..."
+              stat -c%s "$img" > "${img}.size"
               img2simg "$img" "${img}.sparse"
               mv "${img}.sparse" "$img"
             else
               echo "$img is already a sparse image."
+              blk_sz=$(od -v -j 12 -N 4 -t u4 -An "$img" | tr -d ' ')
+              total_blks=$(od -v -j 16 -N 4 -t u4 -An "$img" | tr -d ' ')
+              echo $((blk_sz * total_blks)) > "${img}.size"
             fi
           fi
         }
@@ -148,20 +152,29 @@ jobs:
         convert_to_sparse product.img
         convert_to_sparse system_ext.img
         
+        get_size() {
+          local img="$1"
+          if [ -f "${img}.size" ]; then
+            cat "${img}.size"
+          else
+            stat -c%s "$img"
+          fi
+        }
+        
         args=(
           --metadata-size 65536
           --super-name super
           --metadata-slots 2
           --device super:6763315200
           --group main:6761218048
-          --partition "system:readonly:$(stat -c%s system.img):main" --image system=system.img
-          --partition "vendor:readonly:$(stat -c%s vendor.img):main" --image vendor=vendor.img
+          --partition "system:readonly:$(get_size system.img):main" --image system=system.img
+          --partition "vendor:readonly:$(get_size vendor.img):main" --image vendor=vendor.img
         )
-        if [ -f product.img ] && [ $(stat -c%s product.img) -gt 1048576 ]; then
-          args+=(--partition "product:readonly:$(stat -c%s product.img):main" --image product=product.img)
+        if [ -f product.img ] && [ $(get_size product.img) -gt 1048576 ]; then
+          args+=(--partition "product:readonly:$(get_size product.img):main" --image product=product.img)
         fi
-        if [ -f system_ext.img ] && [ $(stat -c%s system_ext.img) -gt 1048576 ]; then
-          args+=(--partition "system_ext:readonly:$(stat -c%s system_ext.img):main" --image system_ext=system_ext.img)
+        if [ -f system_ext.img ] && [ $(get_size system_ext.img) -gt 1048576 ]; then
+          args+=(--partition "system_ext:readonly:$(get_size system_ext.img):main" --image system_ext=system_ext.img)
         fi
         args+=(--sparse --output super.img)
         ./lpmake "${args[@]}"
