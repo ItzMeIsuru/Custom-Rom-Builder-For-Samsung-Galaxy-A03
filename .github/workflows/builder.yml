@@ -176,8 +176,11 @@ jobs:
         if [ -f system_ext.img ] && [ $(get_size system_ext.img) -gt 1048576 ]; then
           args+=(--partition "system_ext:readonly:$(get_size system_ext.img):main" --image system_ext=system_ext.img)
         fi
-        args+=(--sparse --output super.img)
+        args+=(--output super_raw.img)
         ./lpmake "${args[@]}"
+        echo "Converting raw super image to sparse image for Samsung Odin..."
+        img2simg super_raw.img super.img
+        rm super_raw.img
     - name: Creating tar and compressing to 7z
       run: |
         cd lpbinary/binary
