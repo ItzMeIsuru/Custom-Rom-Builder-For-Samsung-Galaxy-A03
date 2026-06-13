@@ -69,6 +69,10 @@ jobs:
           *.xz) unxz "$gsi_name" ;;
           *.gz) gunzip "$gsi_name" ;;
           *.img) ;;
+          *)
+            echo "Unsupported GSI file type: $gsi_name"
+            exit 1
+            ;;
         esac
         mv *.img ../system.img
         cd ..
