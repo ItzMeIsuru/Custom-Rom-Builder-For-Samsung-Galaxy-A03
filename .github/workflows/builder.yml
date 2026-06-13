@@ -79,9 +79,17 @@ jobs:
     - name: Preparing Files
       run: |
         cd lpbinary/binary
-        wget --tries=3 -O vendor.img "${{ github.event.inputs.VENDOR }}"
-        wget --tries=3 -O product.img "https://sourceforge.net/projects/a03-files/files/product.img/download"
-        wget --tries=3 -O system_ext.img "https://sourceforge.net/projects/a03-files/files/system_ext.img/download"
+        vendor_url="${{ github.event.inputs.VENDOR }}"
+        vendor_url="${vendor_url%/download}"
+        if [[ "$vendor_url" != *vendor.img ]]; then
+          echo "Vendor URL must end with vendor.img (or vendor.img/download)."
+          exit 1
+        fi
+        product_url="${vendor_url%vendor.img}product.img"
+        system_ext_url="${vendor_url%vendor.img}system_ext.img"
+        wget --tries=3 -O vendor.img "$vendor_url"
+        wget --tries=3 -O product.img "$product_url"
+        wget --tries=3 -O system_ext.img "$system_ext_url"
     - name: Packing
       run: |
         cd lpbinary/binary
