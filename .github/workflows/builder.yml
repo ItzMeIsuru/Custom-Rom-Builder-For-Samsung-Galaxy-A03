@@ -45,7 +45,7 @@ jobs:
     - name: Downloading Your GSI And Extracting
       run: |
         cd lpbinary/binary
-        wget ${{ github.event.inputs.GSI }}
+        wget --tries=3 "${{ github.event.inputs.GSI }}"
         mkdir sys
         gsi_file=""
         shopt -s nullglob
@@ -79,9 +79,9 @@ jobs:
     - name: Preparing Files
       run: |
         cd lpbinary/binary
-        wget ${{ github.event.inputs.VENDOR }}
-        wget https://sourceforge.net/projects/a03-files/files/product.img
-        wget https://sourceforge.net/projects/a03-files/files/system_ext.img
+        wget --tries=3 -O vendor.img "${{ github.event.inputs.VENDOR }}"
+        wget --tries=3 -O product.img "https://sourceforge.net/projects/a03-files/files/product.img/download"
+        wget --tries=3 -O system_ext.img "https://sourceforge.net/projects/a03-files/files/system_ext.img/download"
     - name: Packing
       run: |
         cd lpbinary/binary
