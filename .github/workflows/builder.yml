@@ -4,7 +4,7 @@ permissions:
 on:
   push:
     branches:
-      - main  # Change this to your desired branch
+      - main
   workflow_dispatch:
     inputs:
         GSI:
@@ -20,7 +20,7 @@ on:
               required: true
               default: 'A035FXXU4CWI1'
         VENDOR:
-              description: 'Enter Direct Link Of Your Version Vendor'
+              description: 'Enter Direct Link Of Your Vendor (Dropbox or vendor.img direct link)'
               required: true
               default: 'https://sourceforge.net/projects/a03-files/files/A035FXXU4CWI1/vendor.img'
 jobs:
@@ -80,17 +80,37 @@ jobs:
       run: |
         cd lpbinary/binary
         vendor_url="${{ github.event.inputs.VENDOR }}"
+        
+        # Remove /download suffix if present (for SourceForge links)
         vendor_url="${vendor_url%/download}"
-        if [[ "$vendor_url" != */vendor.img ]]; then
-          echo "Vendor URL must point to /vendor.img (an optional /download suffix is normalized automatically)."
+        
+        # Check if this is a Dropbox link
+        if [[ "$vendor_url" == *"dropbox.com"* ]]; then
+          # Force direct download from Dropbox by appending ?dl=1
+          vendor_url="${vendor_url%\?*}?dl=1"
+          echo "Detected Dropbox link, appending ?dl=1 for direct download"
+          wget --tries=3 -O vendor.img "$vendor_url"
+        else
+          # For non-Dropbox links (SourceForge, direct links), validate they end with /vendor.img
+          if [[ "$vendor_url" != */vendor.img ]]; then
+            echo "Vendor URL must point to /vendor.img (or be a valid Dropbox link)."
+            exit 1
+          fi
+          wget --tries=3 -O vendor.img "$vendor_url"
+          
+          # Also download product.img and system_ext.img
+          base_url="${vendor_url%/vendor.img}"
+          product_url="${base_url}/product.img"
+          system_ext_url="${base_url}/system_ext.img"
+          wget --tries=3 -O product.img "$product_url" || echo "Warning: product.img not found"
+          wget --tries=3 -O system_ext.img "$system_ext_url" || echo "Warning: system_ext.img not found"
+        fi
+        
+        # Verify vendor.img was created
+        if [ ! -f vendor.img ]; then
+          echo "Failed to download vendor.img"
           exit 1
         fi
-        base_url="${vendor_url%/vendor.img}"
-        product_url="${base_url}/product.img"
-        system_ext_url="${base_url}/system_ext.img"
-        wget --tries=3 -O vendor.img "$vendor_url"
-        wget --tries=3 -O product.img "$product_url"
-        wget --tries=3 -O system_ext.img "$system_ext_url"
     - name: Packing
       run: |
         cd lpbinary/binary
