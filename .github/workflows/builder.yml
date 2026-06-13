@@ -47,9 +47,33 @@ jobs:
         cd lpbinary/binary
         wget ${{ github.event.inputs.GSI }}
         mkdir sys
-        mv *.xz sys
+        gsi_file=""
+        shopt -s nullglob
+        for ext in xz gz img; do
+          for candidate in *."$ext"; do
+            if [ -f "$candidate" ]; then
+              gsi_file="$candidate"
+              break 2
+            fi
+          done
+        done
+        shopt -u nullglob
+        if [ -z "$gsi_file" ]; then
+          echo "No .xz, .gz, or .img GSI file was downloaded."
+          exit 1
+        fi
+        gsi_name=$(basename "$gsi_file")
+        mv "$gsi_file" sys
         cd sys
-        unxz *.xz
+        case "$gsi_name" in
+          *.xz) unxz "$gsi_name" ;;
+          *.gz) gunzip "$gsi_name" ;;
+          *.img) ;;
+          *)
+            echo "Unsupported GSI file type: $gsi_name"
+            exit 1
+            ;;
+        esac
         mv *.img ../system.img
         cd ..
     - name: Preparing Files
