@@ -47,9 +47,17 @@ jobs:
         cd lpbinary/binary
         wget ${{ github.event.inputs.GSI }}
         mkdir sys
-        gsi_file=$(ls -1 *.xz *.gz *.img 2>/dev/null | head -n 1)
+        gsi_file=""
+        for ext in xz gz img; do
+          for candidate in *."$ext"; do
+            if [ -f "$candidate" ]; then
+              gsi_file="$candidate"
+              break 2
+            fi
+          done
+        done
         if [ -z "$gsi_file" ]; then
-          echo "No .xz, .gz or .img GSI file was downloaded."
+          echo "No .xz, .gz, or .img GSI file was downloaded."
           exit 1
         fi
         mv "$gsi_file" sys
@@ -57,6 +65,7 @@ jobs:
         case "$gsi_file" in
           *.xz) unxz "$gsi_file" ;;
           *.gz) gunzip "$gsi_file" ;;
+          *.img) ;;
         esac
         mv *.img ../system.img
         cd ..
