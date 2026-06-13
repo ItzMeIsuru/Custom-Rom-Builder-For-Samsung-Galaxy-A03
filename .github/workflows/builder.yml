@@ -35,7 +35,7 @@ jobs:
     - name: Install Dependencies
       run: |
         sudo apt update
-        sudo apt install -y zip xz-utils unzip p7zip-full wget android-sdk-libsparse-utils
+        sudo apt install -y zip xz-utils unzip p7zip-full wget android-sdk-libsparse-utils lz4
         
     - name: Installing Tools
       run: |
@@ -181,9 +181,12 @@ jobs:
     - name: Creating tar and compressing to 7z
       run: |
         cd lpbinary/binary
-        tar -cvf super.tar super.img
-        rm -rf super.img
-        7z a ${{ github.event.inputs.NAME }} super.tar
+        echo "Compressing super.img to lz4 format for Odin compatibility..."
+        lz4 -B6 --content-size super.img super.img.lz4
+        echo "Creating ustar archive..."
+        tar -H ustar -c super.img.lz4 > super.tar
+        echo "Compressing to 7z..."
+        7z a -t7z -m0=lzma2 -mx=9 -mfb=64 -md=32m -ms=on "${{ github.event.inputs.NAME }}" super.tar
         rm -rf super.tar
     - name: Upload to Release
       uses: softprops/action-gh-release@v1
