@@ -81,7 +81,12 @@ jobs:
         cd lpbinary/binary
         vendor_url="${{ github.event.inputs.VENDOR }}"
         
-        # Remove /download suffix if present (for SourceForge links)
+        # Convert SourceForge web links to direct download links
+        if [[ "$vendor_url" == *"sourceforge.net/projects/"* ]]; then
+          vendor_url=$(echo "$vendor_url" | sed 's/sourceforge.net\/projects/downloads.sourceforge.net\/project/g' | sed 's/\/files\//\//g')
+        fi
+        
+        # Remove /download suffix if present
         vendor_url="${vendor_url%/download}"
         
         # Check if this is a Dropbox link
@@ -91,7 +96,7 @@ jobs:
           echo "Detected Dropbox link, appending ?dl=1 for direct download"
           wget --tries=3 -O vendor.img "$vendor_url"
         else
-          # For non-Dropbox links (SourceForge, direct links), validate they end with /vendor.img
+          # For non-Dropbox links, validate they end with /vendor.img
           if [[ "$vendor_url" != */vendor.img ]]; then
             echo "Vendor URL must point to /vendor.img (or be a valid Dropbox link)."
             exit 1
@@ -106,9 +111,9 @@ jobs:
           wget --tries=3 -O system_ext.img "$system_ext_url" || echo "Warning: system_ext.img not found"
         fi
         
-        # Verify vendor.img was created
-        if [ ! -f vendor.img ]; then
-          echo "Failed to download vendor.img"
+        # Verify vendor.img was created and is a valid image (not an HTML error page, size > 1MB)
+        if [ ! -f vendor.img ] || [ $(stat -c%s vendor.img) -lt 1048576 ]; then
+          echo "Failed to download vendor.img or file is an HTML error page (too small)"
           exit 1
         fi
     - name: Packing
@@ -120,14 +125,14 @@ jobs:
           --metadata-slots 2
           --device super:6763315200
           --group main:6761218048
-          --partition "system:readonly:$(ls -nl system.img | awk '{print $5}'):main" --image system=system.img
-          --partition "vendor:readonly:$(ls -nl vendor.img | awk '{print $5}'):main" --image vendor=vendor.img
+          --partition "system:readonly:$(stat -c%s system.img):main" --image system=system.img
+          --partition "vendor:readonly:$(stat -c%s vendor.img):main" --image vendor=vendor.img
         )
-        if [ -f product.img ]; then
-          args+=(--partition "product:readonly:$(ls -nl product.img | awk '{print $5}'):main" --image product=product.img)
+        if [ -f product.img ] && [ $(stat -c%s product.img) -gt 1048576 ]; then
+          args+=(--partition "product:readonly:$(stat -c%s product.img):main" --image product=product.img)
         fi
-        if [ -f system_ext.img ]; then
-          args+=(--partition "system_ext:readonly:$(ls -nl system_ext.img | awk '{print $5}'):main" --image system_ext=system_ext.img)
+        if [ -f system_ext.img ] && [ $(stat -c%s system_ext.img) -gt 1048576 ]; then
+          args+=(--partition "system_ext:readonly:$(stat -c%s system_ext.img):main" --image system_ext=system_ext.img)
         fi
         args+=(--sparse --output super.img)
         ./lpmake "${args[@]}"
